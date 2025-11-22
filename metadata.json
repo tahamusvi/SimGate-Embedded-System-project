@@ -1,0 +1,5 @@
+{
+  "name": "Final SimGate IoT Panel",
+  "description": "A comprehensive Persian admin dashboard for managing ESP32/SIM SMS gateways, forwarding rules, and message logs.",
+  "requestFramePermissions": []
+}

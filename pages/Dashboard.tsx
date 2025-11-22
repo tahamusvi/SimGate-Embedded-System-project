@@ -1,0 +1,154 @@
+import React from 'react';
+import { Project, SimEndpoint, IncomingMessage } from '../types';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ArrowUpRight, ArrowDownRight, Activity, Smartphone, MessageCircle, GitFork } from 'lucide-react';
+
+interface DashboardProps {
+  project: Project;
+  sims: SimEndpoint[];
+  messages: IncomingMessage[];
+  chartData: any[];
+  ruleCount: number;
+  onNavigate: (page: string) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ project, sims, messages, chartData, ruleCount, onNavigate }) => {
+  const activeSims = sims.filter(s => s.is_active).length;
+  const todayMessages = messages.length; // Mock count
+  const processedCount = messages.filter(m => m.processed).length;
+  const successRate = todayMessages > 0 ? Math.round((processedCount / todayMessages) * 100) : 100;
+
+  const StatCard = ({ title, value, subValue, icon: Icon, colorClass, trend }: any) => (
+    <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 hover:shadow-md transition-all">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">{title}</p>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{value}</h3>
+        </div>
+        <div className={`p-3 rounded-lg ${colorClass} bg-opacity-10 dark:bg-opacity-20`}>
+          <Icon className={`h-6 w-6 ${colorClass.replace('bg-', 'text-')}`} />
+        </div>
+      </div>
+      <div className="mt-4 flex items-center text-sm">
+        <span className={`flex items-center gap-1 font-medium ${trend === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {trend === 'up' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+          {subValue}
+        </span>
+        <span className="text-gray-400 dark:text-slate-500 ms-2">نسبت به دیروز</span>
+      </div>
+    </div>
+  );
+
+  // Helper to safely render date which might be ISO string or pre-formatted Persian string
+  const renderLastConnection = (dateStr?: string) => {
+    if (!dateStr) return 'نامشخص';
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleString('fa-IR');
+    }
+    return dateStr;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">داشبورد وضعیت</h2>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="پیام‌های دریافتی" 
+          value={todayMessages} 
+          subValue="+12%" 
+          icon={MessageCircle} 
+          colorClass="bg-indigo-500" 
+          trend="up" 
+        />
+        <StatCard 
+          title="سیم‌کارت‌های فعال" 
+          value={`${activeSims}/${sims.length}`} 
+          subValue="پایدار" 
+          icon={Smartphone} 
+          colorClass="bg-emerald-500" 
+          trend="up" 
+        />
+        <StatCard 
+          title="نرخ پردازش موفق" 
+          value={`${successRate}%`} 
+          subValue="-2%" 
+          icon={Activity} 
+          colorClass="bg-blue-500" 
+          trend="down" 
+        />
+        <StatCard 
+          title="قوانین فعال" 
+          value={ruleCount} 
+          subValue="تعداد" 
+          icon={GitFork} 
+          colorClass="bg-purple-500" 
+          trend="up" 
+        />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">ترافیک پیامک (۲۴ ساعت گذشته)</h3>
+          <div className="h-80 w-full" style={{ direction: 'ltr' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorSms" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" strokeOpacity={0.1} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1f2937', borderRadius: '8px', border: 'none', color: '#fff' }}
+                  labelStyle={{ color: '#9ca3af' }}
+                />
+                <Area type="monotone" dataKey="sms" stroke="#0ea5e9" strokeWidth={3} fillOpacity={1} fill="url(#colorSms)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">وضعیت نودها (Nodes)</h3>
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4">
+              {sims.map(sim => (
+                <div key={sim.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-2.5 w-2.5 rounded-full ${sim.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{sim.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-mono" dir="ltr">{sim.phone_number}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                     <p className="text-xs font-bold text-gray-700 dark:text-slate-300 text-[10px]">
+                        {renderLastConnection(sim.last_heartbeat)}
+                     </p>
+                     <p className="text-[10px] text-gray-400 dark:text-slate-500">آخرین اتصال</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button 
+            onClick={() => onNavigate('endpoints')}
+            className="mt-4 w-full py-2 text-sm text-primary-600 dark:text-primary-400 font-medium border border-primary-200 dark:border-primary-800 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+          >
+            مدیریت همه سیم‌کارت‌ها
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
