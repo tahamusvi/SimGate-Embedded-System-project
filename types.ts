@@ -49,7 +49,6 @@ export enum ChannelType {
 
 export interface DestinationChannel {
   id: string;
-  project_id: string;
   type: ChannelType;
   name: string;
   is_enabled: boolean;
@@ -61,8 +60,6 @@ export interface ForwardRule {
   project_id: string;
   name: string;
   is_enabled: boolean;
-  priority: number;
-  source_endpoint_id?: string | null;
   filters: Record<string, any>;
   stop_processing: boolean;
 }
@@ -72,8 +69,6 @@ export interface RuleDestination {
   rule_id: string;
   channel_id: string;
   is_enabled: boolean;
-  override_text_template: string;
-  action_config: Record<string, any>;
 }
 
 export enum DeliveryStatus {

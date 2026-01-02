@@ -29,6 +29,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       if (response.ok) {
         onLogin(data.access, data.refresh, username);
+        localStorage.setItem('accessToken', data.access);
+        localStorage.setItem('refreshToken', data.refresh);
       } else {
         setError('نام کاربری یا رمز عبور اشتباه است.');
       }

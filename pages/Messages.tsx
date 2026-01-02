@@ -109,6 +109,13 @@ export const Messages: React.FC<MessagesProps> = ({
     setEndpointFilter('all');
   };
 
+  const persianDigits = (value: string | number) => {
+    const map = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+    return value
+      .toString()
+      .replace(/\d/g, d => map[Number(d)]);
+  };
+
   const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all' || endpointFilter !== 'all';
 
   // Get Delivery Attempts for Selected Message
@@ -315,7 +322,7 @@ export const Messages: React.FC<MessagesProps> = ({
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white font-mono text-right" dir="ltr">
-                    {msg.from_number}
+                    {persianDigits(msg.from_number)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300 text-right">
                      <div className="flex items-center justify-end gap-2">

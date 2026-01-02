@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ForwardRule, DestinationChannel, ChannelType, RuleDestination } from '../types';
-import { GitFork, Globe, Mail, MessageSquare, Send, ToggleLeft, ToggleRight, Trash2, Edit, X, Check, AlertCircle, Settings, Plus, ArrowLeftRight, Cable } from 'lucide-react';
+import { GitFork, Globe, Mail, MessageSquare, Send, ToggleLeft, ToggleRight, Trash2, X, Check, AlertCircle, Settings, Plus, ArrowLeftRight, Cable } from 'lucide-react';
 
 interface RulesProps {
   rules: ForwardRule[];
@@ -9,9 +9,11 @@ interface RulesProps {
 }
 
 export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations }) => {
+  const [openDeleteModal,setOpenDeleteModal] = useState(false)
   const [localRules, setLocalRules] = useState<ForwardRule[]>(rules);
   const [localChannels, setLocalChannels] = useState<DestinationChannel[]>(channels);
   const [localDestinations, setLocalDestinations] = useState<RuleDestination[]>(ruleDestinations);
+  const [deleteChannelId, setDeleteChannelId] = useState<string | null>(null);
 
   // Update local state when props change
   useEffect(() => {
@@ -25,7 +27,6 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [ruleForm, setRuleForm] = useState({
     name: '',
-    priority: '100',
     filters: '{}'
   });
 
@@ -42,9 +43,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   const [isDestModalOpen, setIsDestModalOpen] = useState(false);
   const [currentRuleForDest, setCurrentRuleForDest] = useState<ForwardRule | null>(null);
   const [destForm, setDestForm] = useState({
-    channelId: '',
-    template: '',
-    config: '{}'
+    channelIds: [] as string[],
   });
   const [isAddingDest, setIsAddingDest] = useState(false);
 
@@ -72,7 +71,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   // --- Rule Handlers ---
   const openAddRule = () => {
     setEditingRuleId(null);
-    setRuleForm({ name: '', priority: '100', filters: '{\n  "contains": "ALERT"\n}' });
+    setRuleForm({ name: '', filters: '{\n  "contains": "ALERT"\n}' });
     setIsRuleModalOpen(true);
   };
 
@@ -80,43 +79,97 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
     setEditingRuleId(rule.id);
     setRuleForm({
       name: rule.name,
-      priority: rule.priority.toString(),
       filters: JSON.stringify(rule.filters, null, 2)
     });
     setIsRuleModalOpen(true);
   };
 
-  const handleDeleteRule = (id: string) => {
-    if(window.confirm('آیا از حذف این قانون اطمینان دارید؟')) {
-      setLocalRules(prev => prev.filter(r => r.id !== id));
-      setLocalDestinations(prev => prev.filter(rd => rd.rule_id !== id)); // Cascade delete
+  const handleDeleteRule = async (id: string) => {
+    if (!window.confirm('آیا از حذف این قانون اطمینان دارید؟')) return;
+    console.log("id", id)
+    try {
+      const res = await fetch(
+        `https://apitest.fpna.ir/monitor/delete-forward-rule/${id}/`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('Delete rule error:', err);
+        alert('خطا در حذف قانون');
+        return;
+      }
+
+      // UI update (soft delete)
+      setLocalRules(prev =>
+        prev.map(r =>
+          r.id === id ? { ...r, is_enabled: false } : r
+        )
+      );
+
+      // اگر نخواستی مقصدها حذف بشن، اینو پاک کن
+      setLocalDestinations(prev =>
+        prev.filter(rd => rd.rule_id !== id)
+      );
+
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('خطا در ارتباط با سرور');
     }
   };
 
-  const handleSaveRule = () => {
+
+  const handleSaveRule = async () => {
     if (!ruleForm.name) return;
+
     if (!isValidJson(ruleForm.filters)) {
       alert('فرمت JSON فیلد شروط صحیح نیست.');
       return;
     }
 
-    const newRule: ForwardRule = {
-      id: editingRuleId || `r-${Date.now()}`,
-      project_id: 'p1',
+    const payload = {
       name: ruleForm.name,
       is_enabled: true,
-      priority: parseInt(ruleForm.priority) || 100,
       filters: JSON.parse(ruleForm.filters),
-      stop_processing: false
+      // project: optional → اگر خواستی بفرستی:
+      // project: selectedProjectId
     };
 
-    if (editingRuleId) {
-      setLocalRules(prev => prev.map(r => r.id === editingRuleId ? { ...newRule, is_enabled: r.is_enabled } : r));
-    } else {
-      setLocalRules([...localRules, newRule]);
+    try {
+      const response = await fetch('https://apitest.fpna.ir/monitor/add-forward-rule/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('API Error:', data);
+        alert('خطا در ذخیره قانون');
+        return;
+      }
+
+      const savedRule: ForwardRule = {
+        ...data.data,
+      };
+
+      setLocalRules(prev => [...prev, savedRule]);
+      setIsRuleModalOpen(false);
+
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('خطا در ارتباط با سرور');
     }
-    setIsRuleModalOpen(false);
   };
+
 
   const toggleRuleStatus = (id: string) => {
     setLocalRules(prev => prev.map(r => r.id === id ? { ...r, is_enabled: !r.is_enabled } : r));
@@ -143,36 +196,135 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
     setIsChannelModalOpen(true);
   };
 
-  const handleDeleteChannel = (id: string) => {
-    if(window.confirm('آیا از حذف این کانال اطمینان دارید؟')) {
-      setLocalChannels(prev => prev.filter(c => c.id !== id));
-      setLocalDestinations(prev => prev.filter(rd => rd.channel_id !== id)); // Cascade delete
+  const fetchRules = async () => {
+    try {
+      const res = await fetch('https://apitest.fpna.ir/monitor/get-forward-rule-list/', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('Fetch rules error:', data);
+        return;
+      }
+
+      setLocalRules(data);
+
+    } catch (err) {
+      console.error('Network error while fetching rules:', err);
     }
   };
 
-  const handleSaveChannel = () => {
+  useEffect(() => {
+    fetchRules();
+  }, []);
+
+
+  const handleDeleteChannel = async (id: string) => {
+    if (!window.confirm('آیا از غیرفعال‌سازی این کانال اطمینان دارید؟')) return;
+
+    try {
+      const res = await fetch(
+        `https://apitest.fpna.ir/monitor/delete-destination-Channel/${id}/`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('Disable channel error:', err);
+        alert('خطا در غیرفعال‌سازی کانال');
+        return;
+      }
+
+      setLocalChannels(prev =>
+        prev.map(ch =>
+          ch.id === id ? { ...ch, is_enabled: false } : ch
+        )
+      );
+
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('خطا در ارتباط با سرور');
+    }
+  };
+
+
+  const handleDeleteItem = () =>{
+    setLocalChannels(prev => prev.filter(c => c.id !== deleteChannelId));
+    setLocalDestinations(prev => prev.filter(rd => rd.channel_id !== deleteChannelId)); 
+    setOpenDeleteModal(false)
+  }
+
+  const handleSaveChannel = async () => {
     if (!channelForm.name) return;
+
     if (!isValidJson(channelForm.config)) {
       alert('فرمت JSON فیلد پیکربندی صحیح نیست.');
       return;
     }
 
-    const newChannel: DestinationChannel = {
-      id: editingChannelId || `c-${Date.now()}`,
-      project_id: 'p1',
+    const tempId = `temp-${Date.now()}`;
+    const tempChannel: DestinationChannel = {
+      id: tempId,
       name: channelForm.name,
       type: channelForm.type,
+      config: JSON.parse(channelForm.config),
       is_enabled: true,
-      config: JSON.parse(channelForm.config)
     };
 
-    if (editingChannelId) {
-      setLocalChannels(prev => prev.map(c => c.id === editingChannelId ? { ...newChannel, is_enabled: c.is_enabled } : c));
-    } else {
-      setLocalChannels([...localChannels, newChannel]);
-    }
+    setLocalChannels(prev => [...prev, tempChannel]);
     setIsChannelModalOpen(false);
+
+    try {
+      const res = await fetch(
+        'https://apitest.fpna.ir/monitor/add-destination-Channel/',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: channelForm.name,
+            type: channelForm.type,
+            config: JSON.parse(channelForm.config),
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('Create channel error:', data);
+        alert('خطا در ایجاد کانال');
+        // ❌ در صورت خطا کانال موقت را حذف کن
+        setLocalChannels(prev => prev.filter(c => c.id !== tempId));
+        return;
+      }
+
+      const createdChannel: DestinationChannel = data.data;
+
+      // 3️⃣ جایگزینی کانال موقت با داده واقعی API
+      setLocalChannels(prev =>
+        prev.map(c => (c.id === tempId ? createdChannel : c))
+      );
+
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('خطا در ارتباط با سرور');
+      setLocalChannels(prev => prev.filter(c => c.id !== tempId));
+    }
   };
+
+
 
   // --- Rule Destination (Link) Handlers ---
   const openDestModal = (rule: ForwardRule) => {
@@ -182,36 +334,120 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   };
 
   const startAddDestination = () => {
-    setDestForm({ channelId: localChannels[0]?.id || '', template: '', config: '{}' });
+    setDestForm({ channelId: localChannels[0]?.id || '', config: '{}' });
     setIsAddingDest(true);
   };
 
-  const handleAddDestination = () => {
+  const handleAddDestination = async () => {
     if (!currentRuleForDest) return;
     if (!destForm.channelId) {
       alert("لطفا یک کانال انتخاب کنید");
       return;
     }
-    if (!isValidJson(destForm.config)) {
-      alert('JSON پیکربندی نامعتبر است');
-      return;
+
+    try {
+      const payload = {
+        rule_id: currentRuleForDest.id,
+        channel_id: destForm.channelId,
+      };
+
+      const res = await fetch(
+        'https://apitest.fpna.ir/monitor/add-management-destination-Channel/',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('Add destination API error:', data);
+        alert('خطا در اضافه کردن مقصد');
+        return;
+      }
+
+      const newDest: RuleDestination = {
+        id: data.data.id, 
+        rule_id: currentRuleForDest.id,
+        channel_id: destForm.channelId,
+        is_enabled: true,
+      };
+
+      setLocalDestinations([...localDestinations, newDest]);
+      setIsAddingDest(false);
+
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('خطا در ارتباط با سرور');
     }
-
-    const newDest: RuleDestination = {
-      id: `rd-${Date.now()}`,
-      rule_id: currentRuleForDest.id,
-      channel_id: destForm.channelId,
-      is_enabled: true,
-      override_text_template: destForm.template,
-      action_config: JSON.parse(destForm.config)
-    };
-
-    setLocalDestinations([...localDestinations, newDest]);
-    setIsAddingDest(false);
   };
 
-  const handleDeleteDestination = (destId: string) => {
-    setLocalDestinations(prev => prev.filter(d => d.id !== destId));
+
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const res = await fetch(
+          'https://apitest.fpna.ir/monitor/get-destination-Channel-list/',
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error('Fetch channels error:', data);
+          return;
+        }
+
+        setLocalChannels(data);
+
+      } catch (err) {
+        console.error('Network error while fetching channels:', err);
+      }
+    };
+
+    fetchChannels();
+  }, []);
+
+
+  const handleDeleteDestination = async (destId: string) => {
+    if (!window.confirm('آیا از حذف این اتصال اطمینان دارید؟')) return;
+
+    // 🔥 optimistic update
+    setLocalDestinations(prev =>
+      prev.filter(d => d.id !== destId)
+    );
+
+    try {
+      const res = await fetch(
+        `https://apitest.fpna.ir/monitor/delete-management-destination-Channel/${destId}/`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error('Delete destination failed');
+      }
+
+    } catch (error) {
+      console.error('Delete destination error:', error);
+      alert('خطا در حذف اتصال');
+
+      // ❌ rollback در صورت خطا
+      setLocalDestinations(prev => [...prev]);
+    }
   };
 
   const toggleDestStatus = (destId: string) => {
@@ -246,24 +482,18 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
             <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
               <thead className="bg-gray-50 dark:bg-slate-700/50">
                 <tr>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">اولویت</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">نام قانون</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">شروط</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">وضعیت</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">عملیات (مقاصد)</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">مدیریت</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                {localRules.map(rule => {
-                   const ruleDests = localDestinations.filter(d => d.rule_id === rule.id);
+                {localRules
+                  .filter(rule => rule.is_enabled) 
+                  .map(rule => {
                    return (
                     <tr key={rule.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-gray-100 dark:bg-slate-700 text-xs font-bold text-gray-600 dark:text-slate-300">
-                          {rule.priority}
-                        </span>
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{rule.name}</td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
                         <div className="group relative inline-block">
@@ -276,31 +506,16 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button onClick={() => toggleRuleStatus(rule.id)}>
-                          {rule.is_enabled ? 
-                            <ToggleRight className="h-8 w-8 text-green-500 hover:text-green-600 transition-colors mx-auto" /> : 
-                            <ToggleLeft className="h-8 w-8 text-gray-300 dark:text-slate-600 hover:text-gray-400 transition-colors mx-auto" />
-                          }
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
                          <button 
                            onClick={() => openDestModal(rule)}
                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
                          >
                            <Cable className="h-3.5 w-3.5" />
-                           {ruleDests.length} مقصد فعال
+                           {rule.destination_channels?.length} مقصد فعال
                          </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-left">
                         <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => openEditRule(rule)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                            title="ویرایش"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
                           <button 
                             onClick={() => handleDeleteRule(rule.id)}
                             className="p-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg transition-colors"
@@ -339,7 +554,9 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {localChannels.map(channel => (
+          {localChannels
+          .filter(channel => channel.is_enabled)
+          .map(channel => (
             <div key={channel.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 hover:shadow-md transition-all group">
                <div className="p-5">
                   <div className="flex justify-between items-start mb-4">
@@ -366,18 +583,12 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
                </div>
                
                <div className="px-5 py-3 bg-gray-50 dark:bg-slate-700/30 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-2">
-                  <button 
-                    onClick={() => openEditChannel(channel)}
-                    className="text-xs font-medium text-gray-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 px-3 py-1.5 rounded hover:bg-white dark:hover:bg-slate-600 transition-colors"
-                  >
-                    ویرایش
-                  </button>
                   <div className="w-px h-5 bg-gray-300 dark:bg-slate-600 my-auto"></div>
                   <button 
                     onClick={() => handleDeleteChannel(channel.id)}
                     className="text-xs font-medium text-red-500 hover:text-red-700 dark:hover:text-red-400 px-3 py-1.5 rounded hover:bg-white dark:hover:bg-slate-600 transition-colors"
                   >
-                    حذف
+                    <Trash2 className="h-4 w-4" />
                   </button>
                </div>
             </div>
@@ -385,7 +596,6 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
         </div>
       </section>
 
-      {/* --- Modals --- */}
 
       {/* Rule Edit Modal */}
       {isRuleModalOpen && (
@@ -407,16 +617,6 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
                     placeholder="مثال: لاگ دمای بالا"
                     value={ruleForm.name}
                     onChange={(e) => setRuleForm({ ...ruleForm, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">اولویت</label>
-                  <input 
-                    type="number"
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-center"
-                    placeholder="100"
-                    value={ruleForm.priority}
-                    onChange={(e) => setRuleForm({ ...ruleForm, priority: e.target.value })}
                   />
                 </div>
               </div>
@@ -509,6 +709,27 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
           </div>
         </div>
       )}
+      {openDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-gray-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+              <h2>ایا از حذف مطمئن هستید؟</h2>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800/50 border-t dark:border-slate-700 flex justify-end gap-3">
+              <button onClick={() => setOpenDeleteModal(false)} className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                انصراف
+              </button>
+              <button
+                onClick={handleDeleteItem}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-sm font-medium"
+              >
+                حذف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Destination Management Modal (The Link) */}
       {isDestModalOpen && currentRuleForDest && (
@@ -539,15 +760,15 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
                        </button>
                     </div>
                     
-                    {localDestinations.filter(d => d.rule_id === currentRuleForDest.id).length === 0 ? (
+                    {currentRuleForDest.destination_channels.length === 0 ? (
                       <div className="text-center py-8 border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50">
                          <Cable className="h-8 w-8 text-gray-300 dark:text-slate-600 mx-auto mb-2" />
                          <p className="text-sm text-gray-500 dark:text-slate-400">هیچ کانالی به این قانون متصل نشده است.</p>
                       </div>
                     ) : (
                       <div className="grid gap-3">
-                        {localDestinations.filter(d => d.rule_id === currentRuleForDest.id).map(dest => {
-                           const ch = localChannels.find(c => c.id === dest.channel_id);
+                        {currentRuleForDest.destination_channels.map(dest => {
+                           const ch = localChannels.find(c => c.id === dest.id);
                            return (
                              <div key={dest.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg group">
                                 <div className="flex items-center gap-3">
@@ -591,33 +812,10 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
                             onChange={(e) => setDestForm({ ...destForm, channelId: e.target.value })}
                           >
                             <option value="" disabled>یک کانال انتخاب کنید...</option>
-                            {localChannels.map(ch => (
+                            {localChannels.filter(channel => channel.is_enabled).map(ch => (
                               <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
                             ))}
                           </select>
-                       </div>
-                       
-                       <div>
-                          <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">قالب متن جایگزین (Override Template)</label>
-                          <textarea 
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm"
-                            placeholder="اختیاری: متن پیام را تغییر دهید..."
-                            rows={2}
-                            value={destForm.template}
-                            onChange={(e) => setDestForm({ ...destForm, template: e.target.value })}
-                          />
-                       </div>
-
-                       <div>
-                          <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">پیکربندی عملیات (Action Config JSON)</label>
-                          <textarea 
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 text-sm font-mono"
-                            placeholder="{}"
-                            rows={2}
-                            dir="ltr"
-                            value={destForm.config}
-                            onChange={(e) => setDestForm({ ...destForm, config: e.target.value })}
-                          />
                        </div>
                     </div>
 
