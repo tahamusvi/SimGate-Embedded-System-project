@@ -86,7 +86,7 @@ function App() {
       };
 
       // 1. Fetch Messages
-      const msgResponse = await fetch('http://localhost:8000/monitor/messages/', { headers });
+      const msgResponse = await fetch('https://apitest.fpna.ir/monitor/messages/', { headers });
       if (msgResponse.ok) {
         const data = await msgResponse.json();
         const mappedMessages: IncomingMessage[] = data.map((item: any) => ({
@@ -106,7 +106,7 @@ function App() {
 
 
       // 2. Fetch SMS Traffic
-      const trafficResponse = await fetch('http://localhost:8000/monitor/dashboard/sms-traffic/', { headers });
+      const trafficResponse = await fetch('https://apitest.fpna.ir/monitor/dashboard/sms-traffic/', { headers });
       if (trafficResponse.ok) {
         const data = await trafficResponse.json();
         const mappedTraffic = data.map((item: any) => {
@@ -120,7 +120,7 @@ function App() {
       }
 
       // 3. Fetch Delivery History
-      const deliveryResponse = await fetch('http://localhost:8000/monitor/deliveries/', { headers });
+      const deliveryResponse = await fetch('https://apitest.fpna.ir/monitor/deliveries/', { headers });
       if (deliveryResponse.ok) {
         const data = await deliveryResponse.json();
         const mappedDeliveries: DeliveryAttempt[] = data.map((item: any) => ({

@@ -26,12 +26,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ messages, chartData, ruleC
           <Icon className={`h-6 w-6 ${colorClass.replace('bg-', 'text-')}`} />
         </div>
       </div>
-      <div className="mt-4 flex items-center text-sm">
-        <span className={`flex items-center gap-1 font-medium ${trend === 'up' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-          {trend === 'up' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
+      <div className="mt- flex items-center text-sm">
+        <span className={`flex items-center gap-1 font-small ${'text-gray-450 dark:text-gray-250'}`}>
           {subValue}
         </span>
-        <span className="text-gray-400 dark:text-slate-500 ms-2">نسبت به دیروز</span>
       </div>
     </div>
   );
@@ -58,34 +56,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ messages, chartData, ruleC
         <StatCard 
           title="پیام‌های دریافتی" 
           value={todayMessages} 
-          subValue="+12%" 
-          icon={MessageCircle} 
+          icon={MessageCircle}
+          subValue="پیام دریافت شده بر روی سیم کارت" 
           colorClass="bg-indigo-500" 
-          trend="up" 
         />
         <StatCard 
           title="سیم‌کارت‌های فعال" 
           value="۱۲" 
-          subValue="پایدار" 
           icon={Smartphone} 
+          subValue="" 
           colorClass="bg-emerald-500" 
-          trend="up" 
         />
         <StatCard 
           title="نرخ پردازش موفق" 
           value={`${successRate}%`} 
-          subValue="-2%" 
           icon={Activity} 
+          subValue="پیام‌های پردازش شده بدون خطا" 
           colorClass="bg-blue-500" 
-          trend="down" 
         />
         <StatCard 
           title="قوانین فعال" 
           value={ruleCount} 
-          subValue="تعداد" 
           icon={GitFork} 
+          subValue="قوانین فعال در پروژه" 
           colorClass="bg-purple-500" 
-          trend="up" 
         />
       </div>
 
@@ -119,7 +113,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ messages, chartData, ruleC
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">آخرین پیام‌ها</h3>
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
             <div className="space-y-4">
-              {messages.map(msg => (
+              {messages.slice(0, 5).map(msg => (
                 <div key={msg.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className={`h-2.5 w-2.5 rounded-full ${msg.processed ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
