@@ -21,7 +21,6 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, isOpen, setIsOpen, onLogout, username }) => {
   const menuItems = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
-    { id: 'endpoints', label: 'سیم‌کارت‌ها', icon: Smartphone },
     { id: 'messages', label: 'پیام‌های دریافتی', icon: MessageSquareText },
     { id: 'delivery-history', label: 'تاریخچه ارسال‌ها', icon: History },
     { id: 'rules', label: 'قوانین و کانال‌ها', icon: GitFork },

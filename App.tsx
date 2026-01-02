@@ -3,12 +3,11 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { Dashboard } from './pages/Dashboard';
 import { Messages } from './pages/Messages';
-import { SimEndpoints } from './pages/SimEndpoints';
 import { Rules } from './pages/Rules';
 import { Login } from './pages/Login';
 import { DeliveryHistory } from './pages/DeliveryHistory';
-import { PROJECTS, RULES, CHANNELS, RULE_DESTINATIONS, STATS_DATA, DELIVERY_ATTEMPTS } from './constants';
-import { Project, IncomingMessage, SimEndpoint, DeliveryAttempt } from './types';
+import { RULES, CHANNELS, RULE_DESTINATIONS, STATS_DATA, DELIVERY_ATTEMPTS } from './constants';
+import { IncomingMessage, DeliveryAttempt } from './types';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -18,14 +17,12 @@ function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [currentProjectId, setCurrentProjectId] = useState(PROJECTS[0].id);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // API State
   const [apiMessages, setApiMessages] = useState<IncomingMessage[]>([]);
-  const [apiEndpoints, setApiEndpoints] = useState<SimEndpoint[]>([]);
   const [apiDeliveryAttempts, setApiDeliveryAttempts] = useState<DeliveryAttempt[]>([]);
   const [trafficData, setTrafficData] = useState<any[]>([]);
 
@@ -68,7 +65,6 @@ function App() {
     setUsername('');
     setIsAuthenticated(false);
     setApiMessages([]);
-    setApiEndpoints([]);
     setApiDeliveryAttempts([]);
     setTrafficData([]);
   };
@@ -90,13 +86,11 @@ function App() {
       };
 
       // 1. Fetch Messages
-      const msgResponse = await fetch('https://apitest.fpna.ir/monitor/messages/', { headers });
+      const msgResponse = await fetch('http://localhost:8000/monitor/messages/', { headers });
       if (msgResponse.ok) {
         const data = await msgResponse.json();
         const mappedMessages: IncomingMessage[] = data.map((item: any) => ({
           id: item.id,
-          project_id: item.project,
-          endpoint_id: item.endpoint,
           from_number: item.from_number,
           to_number: item.to_number,
           body: item.body,
@@ -110,26 +104,9 @@ function App() {
           return;
       }
 
-      // 2. Fetch Sim Endpoints
-      const simResponse = await fetch('https://apitest.fpna.ir/monitor/sim-endpoints/', { headers });
-      if (simResponse.ok) {
-        const data = await simResponse.json();
-        const mappedEndpoints: SimEndpoint[] = data.map((item: any) => ({
-          id: item.id,
-          project_id: PROJECTS[0].id,
-          name: item.name || item.project_slug,
-          phone_number: item.phone_number,
-          imei: item.imei,
-          api_token: '****************',
-          is_active: item.is_active,
-          last_heartbeat: item.last_connected_at,
-          signal_strength: parseInt(item.signal_strength_percentage) || 0
-        }));
-        setApiEndpoints(mappedEndpoints);
-      }
 
-      // 3. Fetch SMS Traffic
-      const trafficResponse = await fetch('https://apitest.fpna.ir/monitor/dashboard/sms-traffic/', { headers });
+      // 2. Fetch SMS Traffic
+      const trafficResponse = await fetch('http://localhost:8000/monitor/dashboard/sms-traffic/', { headers });
       if (trafficResponse.ok) {
         const data = await trafficResponse.json();
         const mappedTraffic = data.map((item: any) => {
@@ -142,8 +119,8 @@ function App() {
         setTrafficData(mappedTraffic);
       }
 
-      // 4. Fetch Delivery History
-      const deliveryResponse = await fetch('https://apitest.fpna.ir/monitor/deliveries/', { headers });
+      // 3. Fetch Delivery History
+      const deliveryResponse = await fetch('http://localhost:8000/monitor/deliveries/', { headers });
       if (deliveryResponse.ok) {
         const data = await deliveryResponse.json();
         const mappedDeliveries: DeliveryAttempt[] = data.map((item: any) => ({
@@ -179,12 +156,10 @@ function App() {
   }, [isAuthenticated, accessToken, fetchData]);
 
   // Derived Data
-  const currentProject = PROJECTS.find(p => p.id === currentProjectId) || PROJECTS[0];
-  const displayEndpoints = apiEndpoints.length > 0 ? apiEndpoints : []; 
   const displayMessages = apiMessages; 
   const displayDeliveries = apiDeliveryAttempts.length > 0 ? apiDeliveryAttempts : DELIVERY_ATTEMPTS;
-  const projectRules = RULES.filter(r => r.project_id === currentProjectId);
-  const projectChannels = CHANNELS.filter(c => c.project_id === currentProjectId);
+  const projectRules = RULES;
+  const projectChannels = CHANNELS;
   // Filter RuleDestinations valid for current project's rules
   const ruleIds = new Set(projectRules.map(r => r.id));
   const projectRuleDestinations = RULE_DESTINATIONS.filter(rd => ruleIds.has(rd.rule_id));
@@ -197,8 +172,6 @@ function App() {
       case 'dashboard':
         return (
           <Dashboard 
-            project={currentProject} 
-            sims={displayEndpoints} 
             messages={displayMessages} 
             chartData={trafficData.length > 0 ? trafficData : STATS_DATA}
             ruleCount={activeRulesCount}
@@ -209,7 +182,6 @@ function App() {
         return (
           <Messages 
             messages={displayMessages} 
-            endpoints={displayEndpoints}
             rules={projectRules}
             channels={projectChannels}
             deliveryAttempts={displayDeliveries}
@@ -228,8 +200,6 @@ function App() {
             isRefreshing={isRefreshing}
           />
         );
-      case 'endpoints':
-        return <SimEndpoints endpoints={displayEndpoints} />;
       case 'rules':
         return (
           <Rules 

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { IncomingMessage, SimEndpoint, ForwardRule, DestinationChannel, DeliveryAttempt, DeliveryStatus, ChannelType } from '../types';
+import { IncomingMessage, ForwardRule, DestinationChannel, DeliveryAttempt, DeliveryStatus, ChannelType } from '../types';
 import { CheckCircle2, Clock, FileJson, Search, Smartphone, Filter, X, ChevronDown, ListFilter, Send, Globe, Mail, MessageSquare, AlertTriangle, ArrowLeftRight, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 
 interface MessagesProps {
   messages: IncomingMessage[];
-  endpoints: SimEndpoint[];
   rules?: ForwardRule[];
   channels?: DestinationChannel[];
   deliveryAttempts?: DeliveryAttempt[];
@@ -21,7 +20,6 @@ interface SortConfig {
 
 export const Messages: React.FC<MessagesProps> = ({ 
   messages, 
-  endpoints, 
   rules = [], 
   channels = [], 
   deliveryAttempts = [],
@@ -36,15 +34,6 @@ export const Messages: React.FC<MessagesProps> = ({
   // Sorting State
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'received_at', direction: 'desc' });
 
-  const getEndpointNameString = (id: string): string => {
-    const ep = endpoints.find(e => e.id === id);
-    return ep ? ep.name : id;
-  };
-
-  const getEndpointName = (id: string) => {
-    const ep = endpoints.find(e => e.id === id);
-    return ep ? ep.name : <span className="font-mono text-xs">{id.substring(0, 8)}...</span>;
-  };
 
   const getChannelIcon = (type: ChannelType) => {
     switch(type) {
@@ -80,10 +69,6 @@ export const Messages: React.FC<MessagesProps> = ({
       case 'from_number':
         aValue = a.from_number;
         bValue = b.from_number;
-        break;
-      case 'endpoint_id':
-        aValue = getEndpointNameString(a.endpoint_id);
-        bValue = getEndpointNameString(b.endpoint_id);
         break;
       case 'body':
         aValue = a.body;
@@ -193,25 +178,7 @@ export const Messages: React.FC<MessagesProps> = ({
                     </div>
                 </div>
 
-                {/* Endpoint Select */}
-                <div className="md:col-span-4 relative group">
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 group-focus-within:text-primary-500 transition-colors">
-                        <Smartphone className="h-5 w-5" />
-                    </div>
-                    <select
-                        value={endpointFilter}
-                        onChange={(e) => setEndpointFilter(e.target.value)}
-                        className="w-full pr-10 pl-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900/50 text-gray-900 dark:text-white appearance-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all shadow-sm cursor-pointer"
-                    >
-                        <option value="all">همه سیم‌کارت‌ها</option>
-                        {endpoints.map(ep => (
-                            <option key={ep.id} value={ep.id}>{ep.name}</option>
-                        ))}
-                    </select>
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
-                        <ChevronDown className="h-4 w-4" />
-                    </div>
-                </div>
+                
             </div>
 
             {/* Action Buttons */}
@@ -267,15 +234,6 @@ export const Messages: React.FC<MessagesProps> = ({
                 </th>
                 <th 
                   scope="col" 
-                  onClick={() => handleSort('endpoint_id')}
-                  className="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors group/th w-48"
-                >
-                  <div className="flex items-center justify-start gap-1">
-                     درگاه (سیم) <SortIcon column="endpoint_id" />
-                  </div>
-                </th>
-                <th 
-                  scope="col" 
                   onClick={() => handleSort('body')}
                   className="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors group/th"
                 >
@@ -324,14 +282,7 @@ export const Messages: React.FC<MessagesProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white font-mono text-right" dir="ltr">
                     {persianDigits(msg.from_number)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300 text-right">
-                     <div className="flex items-center justify-end gap-2">
-                        <span className="font-medium">{getEndpointName(msg.endpoint_id)}</span>
-                        <div className="p-1.5 rounded bg-blue-50 dark:bg-slate-700 text-blue-500 dark:text-blue-400">
-                            <Smartphone className="h-4 w-4" />
-                        </div>
-                     </div>
-                  </td>
+
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300 min-w-[300px] max-w-lg truncate text-right" dir="auto">
                     {msg.body}
                   </td>

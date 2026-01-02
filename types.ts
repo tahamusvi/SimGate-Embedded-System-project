@@ -1,37 +1,6 @@
-export enum Environment {
-  PROD = "prod",
-  STAGE = "stage",
-  DEV = "dev"
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  slug: string;
-  environment: Environment;
-  description: string;
-  timezone: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SimEndpoint {
-  id: string;
-  project_id: string;
-  name: string;
-  phone_number: string;
-  imei: string;
-  api_token: string;
-  is_active: boolean;
-  last_heartbeat?: string;
-  signal_strength?: number;
-}
 
 export interface IncomingMessage {
   id: string;
-  project_id: string;
-  endpoint_id: string;
   from_number: string;
   to_number: string;
   body: string;
@@ -57,7 +26,6 @@ export interface DestinationChannel {
 
 export interface ForwardRule {
   id: string;
-  project_id: string;
   name: string;
   is_enabled: boolean;
   filters: Record<string, any>;

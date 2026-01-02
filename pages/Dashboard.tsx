@@ -1,19 +1,16 @@
 import React from 'react';
-import { Project, SimEndpoint, IncomingMessage } from '../types';
+import { IncomingMessage } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Activity, Smartphone, MessageCircle, GitFork } from 'lucide-react';
 
 interface DashboardProps {
-  project: Project;
-  sims: SimEndpoint[];
   messages: IncomingMessage[];
   chartData: any[];
   ruleCount: number;
   onNavigate: (page: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ project, sims, messages, chartData, ruleCount, onNavigate }) => {
-  const activeSims = sims.filter(s => s.is_active).length;
+export const Dashboard: React.FC<DashboardProps> = ({ messages, chartData, ruleCount, onNavigate }) => {
   const todayMessages = messages.length; // Mock count
   const processedCount = messages.filter(m => m.processed).length;
   const successRate = todayMessages > 0 ? Math.round((processedCount / todayMessages) * 100) : 100;
@@ -68,7 +65,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, sims, messages, c
         />
         <StatCard 
           title="سیم‌کارت‌های فعال" 
-          value={`${activeSims}/${sims.length}`} 
+          value="۱۲" 
           subValue="پایدار" 
           icon={Smartphone} 
           colorClass="bg-emerald-500" 
@@ -119,33 +116,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, sims, messages, c
         </div>
 
         <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">وضعیت نودها (Nodes)</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">آخرین پیام‌ها</h3>
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
             <div className="space-y-4">
-              {sims.map(sim => (
-                <div key={sim.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+              {messages.map(msg => (
+                <div key={msg.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`h-2.5 w-2.5 rounded-full ${sim.is_active ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <div className={`h-2.5 w-2.5 rounded-full ${msg.processed ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{sim.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 font-mono" dir="ltr">{sim.phone_number}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white" >{msg.body}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-mono" >{msg.from_number}</p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                     <p className="text-xs font-bold text-gray-700 dark:text-slate-300 text-[10px]">
-                        {renderLastConnection(sim.last_heartbeat)}
-                     </p>
-                     <p className="text-[10px] text-gray-400 dark:text-slate-500">آخرین اتصال</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
           <button 
-            onClick={() => onNavigate('endpoints')}
+            onClick={() => onNavigate('messages')}
             className="mt-4 w-full py-2 text-sm text-primary-600 dark:text-primary-400 font-medium border border-primary-200 dark:border-primary-800 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
           >
-            مدیریت همه سیم‌کارت‌ها
+           دیدن همه پیام‌ها
           </button>
         </div>
       </div>

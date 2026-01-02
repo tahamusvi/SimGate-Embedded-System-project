@@ -89,7 +89,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
     console.log("id", id)
     try {
       const res = await fetch(
-        `https://apitest.fpna.ir/monitor/delete-forward-rule/${id}/`,
+        `http://localhost:8000/monitor/delete-forward-rule/${id}/`,
         {
           method: 'DELETE',
           headers: {
@@ -141,7 +141,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
     };
 
     try {
-      const response = await fetch('https://apitest.fpna.ir/monitor/add-forward-rule/', {
+      const response = await fetch('http://localhost:8000/monitor/add-forward-rule/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
 
   const fetchRules = async () => {
     try {
-      const res = await fetch('https://apitest.fpna.ir/monitor/get-forward-rule-list/', {
+      const res = await fetch('http://localhost:8000/monitor/get-forward-rule-list/', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -229,7 +229,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
 
     try {
       const res = await fetch(
-        `https://apitest.fpna.ir/monitor/delete-destination-Channel/${id}/`,
+        `http://localhost:8000/monitor/delete-destination-Channel/${id}/`,
         {
           method: 'DELETE',
           headers: {
@@ -286,7 +286,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
 
     try {
       const res = await fetch(
-        'https://apitest.fpna.ir/monitor/add-destination-Channel/',
+        'http://localhost:8000/monitor/add-destination-Channel/',
         {
           method: 'POST',
           headers: {
@@ -352,7 +352,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
       };
 
       const res = await fetch(
-        'https://apitest.fpna.ir/monitor/add-management-destination-Channel/',
+        'http://localhost:8000/monitor/add-management-destination-Channel/',
         {
           method: 'POST',
           headers: {
@@ -391,7 +391,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
     const fetchChannels = async () => {
       try {
         const res = await fetch(
-          'https://apitest.fpna.ir/monitor/get-destination-Channel-list/',
+          'http://localhost:8000/monitor/get-destination-Channel-list/',
           {
             method: 'GET',
             headers: {
@@ -428,7 +428,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
 
     try {
       const res = await fetch(
-        `https://apitest.fpna.ir/monitor/delete-management-destination-Channel/${destId}/`,
+        `http://localhost:8000/monitor/delete-management-destination-Channel/${destId}/`,
         {
           method: 'DELETE',
           headers: {
