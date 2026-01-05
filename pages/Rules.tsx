@@ -305,14 +305,12 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
       if (!res.ok) {
         console.error('Create channel error:', data);
         alert('خطا در ایجاد کانال');
-        // ❌ در صورت خطا کانال موقت را حذف کن
         setLocalChannels(prev => prev.filter(c => c.id !== tempId));
         return;
       }
 
       const createdChannel: DestinationChannel = data.data;
 
-      // 3️⃣ جایگزینی کانال موقت با داده واقعی API
       setLocalChannels(prev =>
         prev.map(c => (c.id === tempId ? createdChannel : c))
       );
@@ -421,14 +419,13 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   const handleDeleteDestination = async (destId: string) => {
     if (!window.confirm('آیا از حذف این اتصال اطمینان دارید؟')) return;
 
-    // 🔥 optimistic update
     setLocalDestinations(prev =>
       prev.filter(d => d.id !== destId)
     );
 
     try {
       const res = await fetch(
-        `https://apitest.fpna.ir/monitor/delete-management-destination-Channel/${destId}/`,
+        `https://apitest.fpna.ir/monitor/delete-management-destination-Channel/${currentRuleForDest.id}/${destId}/`,
         {
           method: 'DELETE',
           headers: {

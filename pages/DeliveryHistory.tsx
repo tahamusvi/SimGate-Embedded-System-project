@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { DeliveryAttempt, IncomingMessage, ForwardRule, DestinationChannel, DeliveryStatus, ChannelType } from '../types';
 import { Search, Filter, ChevronDown, RefreshCw, CheckCircle2, AlertTriangle, Clock, Send, Globe, Mail, MessageSquare, X, History } from 'lucide-react';
 
@@ -22,6 +22,8 @@ export const DeliveryHistory: React.FC<DeliveryHistoryProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'failed' | 'pending'>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [localChannels, setLocalChannels] = useState<DestinationChannel[]>(channels);
+
 
   // Helpers to resolve names (Prioritize direct string from API)
   const getRuleName = (attempt: DeliveryAttempt) => {
@@ -61,6 +63,13 @@ export const DeliveryHistory: React.FC<DeliveryHistoryProps> = ({
     }
   };
 
+  const getChannelAndRuleText = (attempt: DeliveryAttempt) => {
+    const channelName = getChannelName(attempt);
+    const ruleName = getRuleName(attempt);
+
+    return `${channelName} قانون: ${ruleName}`.toLowerCase();
+  };
+
   // Filtering
   const filteredAttempts = attempts.filter(attempt => {
     const msgBody = getMessageContent(attempt);
@@ -74,7 +83,10 @@ export const DeliveryHistory: React.FC<DeliveryHistoryProps> = ({
     // For channel filter, we check if either the ID matches OR the name contains the filter (if filter is not an ID)
     // But here we rely on dropdown which has IDs. If API doesn't return IDs, this filter might be tricky.
     // We'll assume local channels are still relevant or we filter by name if id is missing.
-    const matchesChannel = channelFilter === 'all' ? true : (attempt.channel_id === channelFilter);
+    const matchesChannel = channelFilter === 'all' ? true
+    : getChannelAndRuleText(attempt).includes(
+        localChannels.find(c => c.id === channelFilter)?.name.toLowerCase() ?? ''
+      );
 
     return matchesSearch && matchesStatus && matchesChannel;
   });
@@ -91,6 +103,36 @@ export const DeliveryHistory: React.FC<DeliveryHistoryProps> = ({
     setStatusFilter('all');
     setChannelFilter('all');
   };
+
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const res = await fetch(
+          'https://apitest.fpna.ir/monitor/get-destination-Channel-list/',
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          console.error('Fetch channels error:', data);
+          return;
+        }
+
+        setLocalChannels(data);
+
+      } catch (err) {
+        console.error('Network error while fetching channels:', err);
+      }
+    };
+
+    fetchChannels();
+  }, []);
 
   const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all' || channelFilter !== 'all';
 
@@ -159,7 +201,7 @@ export const DeliveryHistory: React.FC<DeliveryHistoryProps> = ({
                     className="w-full pr-4 pl-8 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900/50 text-gray-900 dark:text-white appearance-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 cursor-pointer"
                 >
                     <option value="all">همه کانال‌ها</option>
-                    {channels.map(c => (
+                    {localChannels.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                 </select>
