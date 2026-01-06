@@ -337,8 +337,7 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   };
 
   const handleAddDestination = async () => {
-    if (!currentRuleForDest) return;
-    if (!destForm.channelId) {
+    if (!currentRuleForDest || !destForm.channelId) {
       alert("لطفا یک کانال انتخاب کنید");
       return;
     }
@@ -349,38 +348,38 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
         channel_id: destForm.channelId,
       };
 
-      const res = await fetch(
-        'https://apitest.fpna.ir/monitor/add-management-destination-Channel/',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch('https://apitest.fpna.ir/monitor/add-management-destination-Channel/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
       const data = await res.json();
 
-      if (!res.ok) {
-        console.error('Add destination API error:', data);
+      if (res.ok) {
+        const selectedChannel = localChannels.find(c => c.id === destForm.channelId);
+        
+        setLocalRules(prev => prev.map(rule => {
+          if (rule.id === currentRuleForDest.id) {
+            return {
+              ...rule,
+              destination_channels: [...(rule.destination_channels || []), selectedChannel]
+            };
+          }
+          return rule;
+        }));
+
+        setCurrentRuleForDest(prev => ({
+          ...prev!,
+          destination_channels: [...(prev!.destination_channels || []), selectedChannel]
+        }));
+
+        setIsAddingDest(false);
+      } else {
         alert('خطا در اضافه کردن مقصد');
-        return;
       }
-
-      const newDest: RuleDestination = {
-        id: data.data.id, 
-        rule_id: currentRuleForDest.id,
-        channel_id: destForm.channelId,
-        is_enabled: true,
-      };
-
-      setLocalDestinations([...localDestinations, newDest]);
-      setIsAddingDest(false);
-
     } catch (error) {
       console.error('Network error:', error);
-      alert('خطا در ارتباط با سرور');
     }
   };
 
@@ -419,31 +418,35 @@ export const Rules: React.FC<RulesProps> = ({ rules, channels, ruleDestinations 
   const handleDeleteDestination = async (destId: string) => {
     if (!window.confirm('آیا از حذف این اتصال اطمینان دارید؟')) return;
 
-    setLocalDestinations(prev =>
-      prev.filter(d => d.id !== destId)
-    );
-
     try {
       const res = await fetch(
         `https://apitest.fpna.ir/monitor/delete-management-destination-Channel/${currentRuleForDest.id}/${destId}/`,
         {
           method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
         }
       );
 
-      if (!res.ok) {
-        throw new Error('Delete destination failed');
-      }
+      if (res.ok) {
+        setLocalRules(prev => prev.map(rule => {
+          if (rule.id === currentRuleForDest.id) {
+            return {
+              ...rule,
+              destination_channels: rule.destination_channels.filter(d => d.id !== destId)
+            };
+          }
+          return rule;
+        }));
 
+        setCurrentRuleForDest(prev => ({
+          ...prev!,
+          destination_channels: prev!.destination_channels.filter(d => d.id !== destId)
+        }));
+      } else {
+        alert('خطا در حذف اتصال');
+      }
     } catch (error) {
       console.error('Delete destination error:', error);
-      alert('خطا در حذف اتصال');
-
-      // ❌ rollback در صورت خطا
-      setLocalDestinations(prev => [...prev]);
     }
   };
 
